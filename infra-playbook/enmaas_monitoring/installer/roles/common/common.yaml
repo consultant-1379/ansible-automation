@@ -1,0 +1,6 @@
+---
+name: Initial Tasks
+vars_files:
+  - vars/main.yaml
+tasks:
+  - include: tasks/main.yaml

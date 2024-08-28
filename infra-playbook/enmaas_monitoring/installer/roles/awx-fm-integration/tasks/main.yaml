@@ -1,0 +1,29 @@
+---
+#
+# Tasks to be applied to production host to create Alert AWX FM Integration container
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Copy alert-awx config file to config directory
+  copy:
+    src: "{{ role_path }}/awx.conf"
+    dest: "{{ monitoring_dir }}/config/alert-awx-integration/awx.conf"
+    force: no
+
+- name: Validate config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/alert-awx-integration/awx.conf"
+  register: alert_config_file
+
+
+- name: Create and run Alert AWX Integration container
+  docker_container:
+    name: alert-awx-integration
+    image: ericsson/nmaas/alert-awx-integration:latest
+    state: started
+    restart_policy: "always"
+    ports:
+     - "9099:9099"
+    volumes:
+     - "{{ monitoring_dir }}/config/alert-awx-integration/awx.conf:/etc/awx.conf"
+  when: alert_config_file.stat.exists

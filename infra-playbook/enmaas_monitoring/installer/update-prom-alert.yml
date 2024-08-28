@@ -1,0 +1,6 @@
+---
+- name: Role to run prometheus, alert manager updates and new alert-awx container
+  hosts: all
+  roles:
+#    - {role: prometheus}
+    - {role: awx-fm-integration}

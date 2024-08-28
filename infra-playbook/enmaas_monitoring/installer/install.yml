@@ -1,0 +1,14 @@
+---
+- name: Deploy Monitoring Solution
+  hosts: all
+  roles:
+    - {role: install_docker}
+#    - {role: image_load}
+    - {role: common}
+    - {role: grafana}
+    - {role: nginx_container}
+    - {role: prometheus}
+    - {role: prometheus-capacity}
+    - {role: awxtower_initial}
+    - {role: check_vars}
+    - {role: local_docker, when: "openshift_host is not defined and kubernetes_context is not defined"}

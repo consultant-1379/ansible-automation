@@ -1,0 +1,51 @@
+---
+- hosts: all
+  tasks:
+    - name: Run CM sync collector script to collect and calculate the sync percentage
+      script: /var/lib/awx/resource/enm-cm-kpi/cm_sync_threshold_percentage.py
+      args:
+        executable: python
+      register: percent
+    - set_fact:
+        sync_nodes: "{{ percent.stdout | regex_search(sync_nodes_regexp,'\\1') | first }}"
+        supervised_nodes: "{{ percent.stdout | regex_search(supervised_nodes_regexp,'\\1') | first }}"
+        sync_percent: "{{ percent.stdout | regex_search(unsync_percent_regexp,'\\1') | first }}"
+      vars:
+        sync_nodes_regexp: "Synchronized nodes count:.'(\\d+)'"
+        supervised_nodes_regexp: "Supervised nodes count:.'(\\d+)'"
+        unsync_percent_regexp: "Percent of Synchronized nodes:.'(\\d+)'"
+    - debug:
+        msg: "sync_nodes {{sync_nodes}}, supervised_nodes {{supervised_nodes}}, sync_percent {{sync_percent}}"
+
+    - name: Store metrics in a temporary file
+      block:
+        - name: Create temporary file
+          file:
+            path: "/tmp/cm_sync_metrics.txt"
+            state: touch
+          delegate_to: localhost
+          run_once: true
+
+        - name: Copy metrics to temporary file
+          blockinfile:
+            path: /tmp/cm_sync_metrics.txt
+            marker: ""
+            block: |
+              cm_status{type="sync_nodes",tenancy="{{tenancy}}"} {{sync_nodes}}
+              cm_status{type="supervised_nodes",tenancy="{{tenancy}}"} {{supervised_nodes}}
+              cm_status{type="sync_percent",tenancy="{{tenancy}}"} {{sync_percent}}
+          delegate_to: localhost
+
+        - name: "Pushgateway"
+          shell: cat /tmp/cm_sync_metrics.txt | curl --data-binary @- http://172.17.0.1:9091/metrics/job/pushgateway
+          delegate_to: localhost
+          run_once: true
+
+      always:
+        - name: Delete temporary file
+          file:
+            path: "/tmp/cm_sync_metrics.txt"
+            state: absent
+          delegate_to: localhost
+          run_once: true
+

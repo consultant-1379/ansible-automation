@@ -1,0 +1,92 @@
+# global config for monitoring prometheus
+global:
+  scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+    - targets: ['127.0.0.1:9090']
+
+  - job_name: 'Pilot_Capacity_Expoter'
+    scrape_interval: 5m
+    scrape_timeout: 1m
+    static_configs:
+      - targets: ['192.168.255.248:8087']
+
+  - job_name: 'STAGING-01'
+    static_configs:
+      - targets: ['10.3.10.17:80']
+
+  - job_name: 'STAGING-02'
+    static_configs:
+      - targets: ['10.3.20.17:80']
+
+  - job_name: 'BMAS-02_FRA'
+    static_configs:
+      - targets: ['10.146.107.145:80']
+
+  - job_name: 'ENM01XAAS_FRA'
+    static_configs:
+      - targets: ['10.3.30.17:80']
+
+  - job_name: 'CHARTER_CBRS_ATL'
+    static_configs:
+      - targets: ['10.200.0.145:80']
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['10.2.100.7:9091']
+  - job_name: 'CWW_ENM_ATL'
+    static_configs:
+      - targets: ['10.1.4.17:80']
+  - job_name: 'CVENM01_ATL'
+    static_configs:
+      - targets: ['192.168.181.17:80']
+  - job_name: 'CELLCOM_ATL'
+    static_configs:
+      - targets: ['10.9.20.17:80']
+  - job_name: 'EKN_ATL'
+    static_configs:
+      - targets: ['10.169.0.17:80']
+  - job_name: 'NTWLS_ATL'
+    static_configs:
+      - targets: ['10.100.50.17:80']
+  - job_name: 'BMASENM01_ATL'
+    static_configs:
+      - targets: ['10.0.18.17:80']
+  - job_name: 'VERIZON_LAB_ATL'
+    static_configs:
+      - targets: ['10.161.9.81:80']
+  - job_name: 'TBAYTEL_ATL'
+    static_configs:
+      - targets: ['172.24.75.209:80']
+  - job_name: 'KSW_ATL'
+    static_configs:
+      - targets: ['10.132.0.17:80']
+  - job_name: 'TRAILENM01_ATL'
+    static_configs:
+      - targets: ['10.100.200.17:80']
+  - job_name: 'FTC_ATL'
+    static_configs:
+      - targets: ['10.220.6.17:80']
+    

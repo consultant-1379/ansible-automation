@@ -1,0 +1,53 @@
+---
+#
+# Tasks to be applied to production host to setup pre-requisites and setup prometheus
+# container for Capacity Monitoring
+
+
+# Add tasks for a specific role to this playbook...
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Copy Prometheus yaml file to Cap prometheus config directory
+  copy:
+    src: "{{ role_path }}/prometheus_cap.yml"
+    dest: "{{ monitoring_dir }}/config/prometheus/prometheus_cap.yml"
+    force: no
+
+- name: Create volume directory for Prometheus data
+  file:
+    path: "{{ monitoring_dir }}/prometheus-cap-data"
+    state: directory
+    mode: "0777"
+
+
+- name: Validate dir path
+  stat:
+    path: "{{ monitoring_dir }}/prometheus-cap-data"
+  register: prometheus_cap_dir
+
+
+- name: Validate config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/prometheus/prometheus_cap.yml"
+  register: cap_config_file
+
+
+- name: Create and run Prometheus container
+  docker_container:
+    name: prometheus-server-cap-infra
+    image: prom/prometheus
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ cap_prometheus_port }}:9090"
+    volumes:
+     - "{{ monitoring_dir }}/prometheus-cap-data:/prometheus"
+     - "{{ monitoring_dir }}/config/prometheus/prometheus_cap.yml:/etc/prometheus/prometheus.yml"
+    command:
+     - "--config.file=/etc/prometheus/prometheus.yml"
+     - "--storage.tsdb.path=/prometheus"
+     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+     - "--web.console.templates=/usr/share/prometheus/consoles"
+     - "--storage.tsdb.retention.time=90d"
+  when: prometheus_cap_dir.stat.exists and cap_config_file.stat.exists

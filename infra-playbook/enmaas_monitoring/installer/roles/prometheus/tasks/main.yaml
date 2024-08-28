@@ -1,0 +1,94 @@
+---
+#
+# Tasks to be applied to production host to setup pre-requisites and setup prometheus
+# container
+
+
+# Add tasks for a specific role to this playbook...
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Create volume directory for Prometheus data
+  file:
+    path: "{{ monitoring_dir }}/prometheus-data"
+    state: directory
+    mode: "0777"
+
+- name: Validate dir path
+  stat:
+    path: "{{ monitoring_dir }}/prometheus-data"
+  register: prometheus_dir
+
+- name: Validate config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/prometheus/prometheus.yml"
+  register: config_file
+
+- name: Validate alert rules dir path 
+  stat:
+    path: "{{ monitoring_dir }}/prom-rules/alert-rules"
+  register: alert_rule_path
+
+- name: Validate file-sd-configs path
+  stat:
+    path: "{{ monitoring_dir }}/config/file-sd-configs"
+  register: file_sd_configs_path
+
+- name: Create and run Prometheus container
+  docker_container:
+    name: prometheus-server
+    image: prom/prometheus
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ prometheus_port }}:9090"
+    volumes:
+     - "{{ monitoring_dir }}/prometheus-data:/prometheus"
+     - "{{ monitoring_dir }}/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+     - "{{ monitoring_dir }}/prom-rules/alert-rules:/alert-rules"
+     - "{{ monitoring_dir }}/config/file-sd-configs:/file-sd-configs"
+  when: prometheus_dir.stat.exists and config_file.stat.exists and alert_rule_path.stat.exists and file_sd_configs_path.stat.exists
+
+
+- name: Create and run Prometheus Pushgateway container
+  docker_container:
+    name: prom_pushgateway
+    image: prom/pushgateway
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ push_gateway_port }}:9091"
+
+- name: Validate alert manager config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/alertmanager/alertmanager.yml"
+  register: alert_conf_file
+
+- name: Validate blackbox exporter yaml file
+  stat:
+    path: "{{ monitoring_dir }}/config/blackbox-exporter/blackbox.yml"
+  register: blackbox_exporter_config
+
+- name: Create and run Prometheus Alertmanager container
+  docker_container:
+    name: prom_alertmanager
+    image: prom/alertmanager
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ alert_manager_port }}:9093"
+    volumes:
+     - "{{ monitoring_dir }}/config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml"
+  when: alert_conf_file.stat.exists
+
+- name: Create and run Prometheus Blackbox exporter container
+  docker_container:
+    name: blackbox_exporter
+    image: prom/blackbox-exporter:master
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ blackbox_exp_port }}:9115"
+    volumes:
+     - "{{ monitoring_dir }}/config/blackbox-exporter/blackbox.yml:/config/blackbox.yml"
+  when: blackbox_exporter_config.stat.exists

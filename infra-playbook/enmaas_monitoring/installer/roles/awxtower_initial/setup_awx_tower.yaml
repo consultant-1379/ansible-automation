@@ -1,0 +1,6 @@
+---
+name: Deploy all containers in the AWX tower setup
+vars_files:
+  - vars/main.yaml
+tasks:
+  - include: tasks/main.yaml

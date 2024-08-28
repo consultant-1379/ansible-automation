@@ -1,0 +1,36 @@
+---
+- hosts: "{{ target_hosts }}"
+  tasks:
+    - name: Check is ddcExporter is already running
+      shell: ps -eaf | grep ddcExporter | grep -v grep
+      register: ddc_exporter_status
+      ignore_errors: True
+    - name: Copy ddcExporter
+      copy:
+        src: /var/lib/awx/resource/ddc-exporter/ddcExporter
+        dest: /tmp
+        mode: 755
+      when: ddc_exporter_status.rc == 1
+    - name: Copy Private key
+      copy:
+        src: "{{ ansible_ssh_private_key_file }}"
+        dest: /tmp/key.pem
+        mode: 400
+      when: ddc_exporter_status.rc == 1
+    - name: create hosts file
+      shell: consul members | grep -v Node | egrep "scp|amos" | awk '{print $1}' > /tmp/hosts.txt
+      args:
+        executable: /bin/bash
+      become: yes
+      when: ddc_exporter_status.rc == 1
+    - name: Copy Config file.
+      copy:
+        src: /var/lib/awx/resource/ddc-exporter/config.json
+        dest: /tmp/config.json
+        mode: 755
+      become: yes
+      when: ddc_exporter_status.rc == 1
+    - name: Run the script if not running already
+      shell: 'nohup /tmp/ddcExporter -config /tmp/config.json </dev/null >/dev/null 2>&1 &'
+      become: yes
+      when: ddc_exporter_status.rc == 1

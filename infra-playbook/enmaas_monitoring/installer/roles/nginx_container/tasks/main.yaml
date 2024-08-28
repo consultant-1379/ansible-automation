@@ -1,0 +1,40 @@
+---
+
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Copy Ngnix Config File
+  copy:
+    src: "{{ role_path }}/nginx.conf"
+    dest: "{{ monitoring_dir }}/config/nginx-prometheus/"
+    force: no
+
+- name: Copy Ngnix Password File
+  copy:
+    src: "{{ role_path }}/.htpasswd"
+    dest: "{{ monitoring_dir }}/config/nginx-prometheus/"
+    force: no
+
+- name: Validate config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/nginx-prometheus/nginx.conf"
+  register: config_file
+
+- name: Validate password file path
+  stat:
+    path: "{{ monitoring_dir }}/config/nginx-prometheus/.htpasswd"
+  register: passwd_file
+
+- name: Create and run nginx container
+  docker_container:
+    name: nginx-prometheus
+    image: nginx_prometheus
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ nginx_port }}:{{ nginx_port }}"
+    volumes:
+     - "{{ monitoring_dir }}/config/nginx-prometheus/nginx.conf:/etc/nginx/nginx.conf"
+     - "{{ monitoring_dir }}/config/nginx-prometheus/.htpasswd:/etc/nginx/.htpasswd"
+  when: passwd_file.stat.exists and config_file.stat.exists
+

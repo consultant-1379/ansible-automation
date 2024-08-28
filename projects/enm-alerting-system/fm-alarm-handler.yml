@@ -1,0 +1,52 @@
+---
+# This playbook Raises and alarm in ENM for provided tenancy with relevant alert from alertmanager
+
+- hosts: "{{ tenancy if tenancy is defined else job }}"
+  tasks:
+    - name: Print all the variables
+      debug:
+        msg: " alertname - {{ alertname }} , hostname - {{ hostname | default('ENM') }}, instance -{{ instance }}, job - {{ job }}, severity - {{ severity }}"
+    - name: Raise a major alarm
+      uri:
+        url: http://fmserv:8080/internal-alarm-service/internalalarm/internalalarmservice/translate
+        validate_certs: false
+        return_content: yes
+        method: POST
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: "json"
+        body:
+          {
+            "specificProblem": "{{ description }}",
+            "probableCause": "{{ alertname }}",
+            "managedObjectInstance": "{{ hostname | default('ENM') }}",
+            "perceivedSeverity": "CRITICAL",
+            "recordType": "ALARM",
+            "eventType": "{{ alertname }}",
+            "additionalAttributes": { "currentvalue": "{{ currentvalue }}" },
+          }
+        status_code: 200
+      when: status == "firing"
+    - name: Clear a major alarm
+      uri:
+        url: http://fmserv:8080/internal-alarm-service/internalalarm/internalalarmservice/translate
+        validate_certs: false
+        return_content: yes
+        method: POST
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: "json"
+        body:
+          {
+            "specificProblem": "{{ description }}",
+            "probableCause": "{{ alertname }}",
+            "managedObjectInstance": "{{ hostname | default('ENM') }}",
+            "perceivedSeverity": "CLEARED",
+            "recordType": "ALARM",
+            "eventType": "{{ alertname }}",
+            "additionalAttributes": { "currentvalue": "{{ currentvalue }}" },
+          }
+        status_code: 200
+      when: status  == "resolved"

@@ -1,0 +1,79 @@
+---
+#
+# Load Docker images from Tar for the setup
+#
+
+- name: Load Prometheus Image
+  docker_image:
+    name: prom/prometheus
+    tag: latest
+    load_path: "{{ role_path }}/tar_files/prometheus.tar"
+    state: present
+    source: load
+
+- name: Load Grafana Image
+  docker_image:
+    name: grafana/grafana
+    tag: latest
+    load_path: "{{ role_path }}/tar_files/grafana.tar"
+    state: present
+    source: load
+
+- name: Load awxtask Image
+  docker_image:
+    name: ansible/awx_task
+    tag: 9.0.1
+    timeout: 180
+    load_path: "{{ role_path }}/tar_files/awxtask.tar"
+    state: present
+    source: load
+
+- name: Load awxweb Image
+  docker_image:
+    name: ansible/awx_web
+    tag: 9.0.1
+    timeout: 180
+    load_path: "{{ role_path }}/tar_files/awxweb.tar"
+    state: present
+    source: load
+
+- name: Load Postgres Image
+  docker_image:
+    name: postgres
+    tag: 10
+    timeout: 180
+    load_path: "{{ role_path }}/tar_files/postgres.tar"
+    state: present
+    source: load
+
+- name: Load Memcached Image
+  docker_image:
+    name: memcached
+    tag: alpine
+    load_path: "{{ role_path }}/tar_files/memcached.tar"
+    state: present
+    source: load
+
+- name: Load Rabbitmq Image
+  docker_image:
+    name: ansible/awx_rabbitmq
+    tag: 3.7.4
+    load_path: "{{ role_path }}/tar_files/rabbitmq.tar"
+    state: present
+    source: load
+
+- name: Load Pushgateway Image
+  docker_image:
+    name: prom/pushgateway
+    tag: latest
+    load_path: "{{ role_path }}/tar_files/pushgateway.tar"
+    state: present
+    source: load
+
+- name: Load AlertManager Image
+  docker_image:
+    name: prom/alertmanager
+    tag: latest
+    load_path: "{{ role_path }}/tar_files/alertmanager.tar"
+    state: present
+    source: load

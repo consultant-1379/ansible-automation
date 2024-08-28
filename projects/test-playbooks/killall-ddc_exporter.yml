@@ -1,0 +1,9 @@
+---
+- hosts: all
+  tasks:
+    - name: Kill consul exporter
+      shell: kill -9 `ps -eaf | grep ddcExporter | grep -v grep | awk '{print $2}'`
+      args:
+        executable: /bin/bash
+      ignore_errors: True
+      become: yes

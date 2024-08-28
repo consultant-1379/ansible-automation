@@ -1,0 +1,37 @@
+---
+#
+# Initial Tasks to be applied
+#
+
+- name: Install Docker-compose if not already
+  pip:
+    name: docker-compose=={{ docker_compose_version }}
+
+- name: Create Monitoring Base dir
+  file:
+    path: "{{ base_dir }}/monitoring"
+    state: directory
+    mode: "0777"
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Create Prometheus Config directory
+  file:
+    path: "{{ monitoring_dir }}/config/prometheus"
+    state: directory
+    mode: "0777"
+
+- name: Copy Prometheus yaml file to prometheus config directory
+  copy:
+    src: "{{ role_path }}/prometheus.yml"
+    dest: "{{ monitoring_dir }}/config/prometheus/prometheus.yml"
+    force: no
+
+- name: Create AWX Data directory
+  file:
+    path: "{{ monitoring_dir }}/data/awx"
+    state: directory
+    mode: "0777"
+
+- set_fact: awx_data_dir="{{ monitoring_dir }}/data/awx"
+

@@ -1,0 +1,29 @@
+---
+#
+# Tasks to be applied to production host to setup pre-requisites and setup grafana
+# container
+
+
+# Add tasks for a specific role to this playbook...
+- name: Create volume directory for Grafana data
+  file:
+    path: "{{ monitoring_dir }}/grafana-data"
+    state: directory
+    mode: "0777"
+
+- name: Validate dir path
+  stat:
+    path: "{{ monitoring_dir }}/grafana-data"
+  register: grafana_dir
+
+- name: Create and run grafana container
+  docker_container:
+    name: grafana-server
+    image: grafana/grafana
+    state: started
+    restart_policy: "always"
+    ports:
+     - "{{ grafana_port }}:3000"
+    volumes:
+     - "{{ monitoring_dir }}/grafana-data:/var/lib/grafana"
+  when: grafana_dir.stat.exists

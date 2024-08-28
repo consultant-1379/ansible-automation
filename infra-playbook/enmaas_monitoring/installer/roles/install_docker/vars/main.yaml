@@ -1,0 +1,4 @@
+---
+docker_ce_rpm_version: "19.03.5-3.el7.x86_64"
+pip_docker_version: "3.7.3"
+pip_requests_version: "2.20.1"

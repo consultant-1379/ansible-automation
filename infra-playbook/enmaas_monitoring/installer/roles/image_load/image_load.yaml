@@ -1,0 +1,6 @@
+---
+name: Load docker images from tar
+vars_files:
+  - vars/main.yaml
+tasks:
+  - include: tasks/main.yaml

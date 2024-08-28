@@ -1,0 +1,6 @@
+---
+- name: Role to run bb-exporter, nginx container
+  hosts: all
+  roles:
+#    - {role: prometheus}
+    - {role: nginx}

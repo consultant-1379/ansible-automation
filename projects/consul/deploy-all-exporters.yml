@@ -1,0 +1,80 @@
+---
+- hosts: all
+  tasks:
+    - name: "Check the consul leader"
+      uri:
+        url: "http://127.0.0.1:8500/v1/status/leader"
+        method: GET
+        return_content: yes
+      register: leaderip
+    - debug: msg={{ tenancy_name }}
+    - name: Print the leader IP
+      debug: msg={{ leaderip.content | replace('8300','8500') }}
+    - name: Check is consul_exporter is already running
+      shell: ps -eaf | grep consul_exporter | grep -v grep
+      register: expoter_status
+      ignore_errors: True
+    - name: Copy consul_exporter
+      copy:
+        src: /var/lib/awx/resource/consul-exporter/consul_exporter
+        dest: /tmp
+        mode: 755
+      when: expoter_status.rc == 1
+    - name: Run the script if not running already
+      shell: cd /tmp/; nohup ./consul_exporter --consul.server={{ leaderip.content | replace('8300','8500') }} --kv.prefix=/ --web.listen-address=0.0.0.0:6323 </dev/null >/dev/null 2>&1 &
+      become: yes
+      when: expoter_status.rc == 1
+    - name: Check if ddcExporter is already running
+      shell: ps -eaf | grep ddcExporter | grep -v grep
+      register: ddc_exporter_status
+      ignore_errors: True
+    - name: Copy ddcExporter
+      copy:
+        src: /var/lib/awx/resource/ddc-exporter/ddcExporter
+        dest: /tmp
+        mode: 755
+      when: ddc_exporter_status.rc == 1
+    - name: Copy Private key
+      copy:
+        src: "{{ ansible_ssh_private_key_file }}"
+        dest: /tmp/key.pem
+        mode: 400
+      when: ddc_exporter_status.rc == 1
+    - name: create hosts file
+      shell: consul members | grep -v Node | egrep "scp|amos" | awk '{print $1}' > /tmp/hosts.txt
+      args:
+        executable: /bin/bash
+      become: yes
+      when: ddc_exporter_status.rc == 1
+    - name: Copy Config file.
+      copy:
+        src: /var/lib/awx/resource/ddc-exporter/config.json
+        dest: /tmp/config.json
+        mode: 755
+      become: yes
+      when: ddc_exporter_status.rc == 1
+    - name: Run the script if not running already
+      shell: 'nohup /tmp/ddcExporter -config /tmp/config.json </dev/null >/dev/null 2>&1 &'
+      become: yes
+      when: ddc_exporter_status.rc == 1
+    - name: Check if json_exporter is already running
+      shell: ps -eaf | grep json_exporter | grep -v grep
+      register: json_exporter_status
+      ignore_errors: True
+    - name: Copy json_exporter
+      copy:
+        src: /var/lib/awx/resource/json-exporter/json_exporter
+        dest: /tmp
+        mode: 755
+      when: json_exporter_status.rc == 1
+    - name: Copy json_exporter workflow Config file.
+      copy:
+        src: /var/lib/awx/resource/json-exporter/workflows_config.yml
+        dest: /tmp/workflows_config.yml
+        mode: 755
+      become: yes
+      when: json_exporter_status.rc == 1
+    - name: Run the script if not running already
+      shell: 'nohup /tmp/json_exporter --port 6327 http://vnflaf-int/wfs/rest/progresssummaries /tmp/workflows_config.yml </dev/null >/dev/null 2>&1 &'
+      become: yes
+      when: json_exporter_status.rc == 1

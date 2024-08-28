@@ -1,0 +1,25 @@
+---
+# This playbook modifies the user privileges in ENM 
+
+- hosts: "{{ target_hosts }}"
+  tasks:
+    - name: Get the cookie
+      shell: cat ~/.enm_login
+      register: cookie_text
+      no_log: true
+    - set_fact:
+        priv: "[{{ privileges }}]"
+    - name: Raise the request to create a user to ENM FQDN for the given tenancy
+      uri:
+        url: https://{{ http_fqdn }}/oss/idm/usermanagement/modifyprivileges
+        validate_certs: false
+        return_content: yes
+        method: PUT
+        headers:
+          Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: "json"
+        body: "{{ priv }}"
+        status_code: 200
+

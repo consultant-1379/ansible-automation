@@ -1,0 +1,36 @@
+---
+#
+# Tasks to be applied to production host to create and configure Nginx container
+
+- set_fact: monitoring_dir="{{ base_dir }}/monitoring"
+
+- name: Copy nginx config file to config directory
+  copy:
+    src: "{{ role_path }}/nginx.conf"
+    dest: "{{ monitoring_dir }}/config/nginx/nginx.conf"
+    force: no
+
+- name: Validate config file path
+  stat:
+    path: "{{ monitoring_dir }}/config/nginx/nginx.conf"
+  register: nginx_config_file
+
+- name: Validate nginx certs path
+  stat:
+    path: "{{ monitoring_dir }}/nginx/certs"
+  register: nginx_certs_path
+
+- name: Create and run Nginx container
+  docker_container:
+    name: nginx-server
+    image: nginx_with_addons:latest
+    networks:
+      - name: "docker_compose_default"
+    state: started
+    restart_policy: "always"
+    ports:
+     - "443:443"
+    volumes:
+     - "{{ monitoring_dir }}/config/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf"
+     - "{{ monitoring_dir }}/nginx/certs:/etc/nginx/certs"
+  when: nginx_config_file.stat.exists and nginx_certs_path.stat.exists

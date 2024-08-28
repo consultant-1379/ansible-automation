@@ -1,0 +1,32 @@
+---
+#
+# Tasks to be applied to production host to setup pre-requisites and setup awx
+# containers
+
+- name: Create directory for AWX tower docker compose
+  file:
+    path: "{{ awx_data_dir }}/docker_compose"
+    state: directory
+    mode: "0777"
+
+- set_fact: docker_compose_dir="{{ awx_data_dir }}/docker_compose"
+
+- name: Create directory for AWX tower data postgres
+  file:
+    path: "{{ awx_data_dir }}/postgres"
+    state: directory
+    mode: "0777"
+
+- set_fact: postgres_data_dir="{{ awx_data_dir }}/postgres"
+
+- name: Create directory for AWX tower projects
+  file:
+    path: "{{ awx_data_dir }}/projects"
+    state: directory
+    mode: "0777"
+
+- name: Create directory for AWX tower resources
+  file:
+    path: "{{ awx_data_dir }}/resource"
+    state: directory
+    mode: "0777"

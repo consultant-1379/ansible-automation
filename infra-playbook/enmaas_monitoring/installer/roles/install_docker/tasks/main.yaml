@@ -1,0 +1,49 @@
+---
+#
+# Task to install docker CE
+#
+
+- name: Install yum-utils
+  yum:
+    name: yum-utils 
+    state: installed
+
+- name: Install device-mapper-persistent-data
+  yum:
+    name: device-mapper-persistent-data
+    state: installed
+
+- name: Install lvm2
+  yum:
+    name: lvm2
+    state: installed
+
+
+- name: Add Docker repo
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+  become: yes
+
+
+- name: Install docker
+  yum:
+    name: "docker-ce-{{ docker_ce_rpm_version }}"
+    state: installed
+  become: yes
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+
+
+- name: Install Pip package docker
+  pip:
+    name: docker=={{ pip_docker_version }}
+
+- name: Install Pip package requests
+  pip:
+    name: requests=={{ pip_requests_version }}

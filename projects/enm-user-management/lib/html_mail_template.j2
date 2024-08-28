@@ -1,0 +1,122 @@
+<html>
+<head>
+<title>ENM User Audit</title>
+</head>
+
+<body style="font-family:arial; background-color:#E7E9EA">
+<br><B>
+{% for server in groups['servers']  %}
+<table style="border:0; background-color:#FFFFFF; width:100%; table-layout: fixed" >
+  <tr>
+    <td style="font-family:arial;color:midnightblue;font-size:25px;text-align:center;font-weight:bold;">Tenancy: {{ hostvars[server]['tenancy_name'] }}</td>
+  </tr>
+</table>
+<br><B>
+
+{% if hostvars[server]['comparision_output'] is defined %}
+<table style="color:#FFFFFF; background-color:#002561; border:0; width:100%; table-layout: fixed" >
+  <tr>
+    <td align='center'>Missing User Information</td>
+  </tr>
+</table>
+
+<table style="border:0; width:100%; table-layout: fixed" >
+<tr>
+  <td style="color:#FFFFFF; background-color:#002561; border:0; width:25%; text-align:center">Missing ENM users</td>
+  {% if hostvars[server]['comparision_output']['missing_enm_users'] | length >0 %}
+  <td style="color:#002561; background-color:#FFFFFF; text-align:center; word-wrap:break-word">{{ hostvars[server]['comparision_output']['missing_enm_users'] | join(',')}}</td>
+  {% else %}
+  <td style="color:#008000; background-color:#FFFFFF; text-align:center">No missing users found</td>
+  {% endif %}
+</tr>
+<tr >
+  <td style="color:#FFFFFF; background-color:#002561; text-align:center">Missing CSV Users</td>
+  {% if hostvars[server]['comparision_output']['missing_csv_users'] | length >0 %}
+  <td style="color:#002561; background-color:#FFFFFF; text-align:center; word-wrap:break-word">{{ hostvars[server]['comparision_output']['missing_csv_users'] | join(',')}}</td>
+  {% else %}
+  <td style="color:#008000; background-color:#FFFFFF; text-align:center">No missing users found</td>
+  {% endif %}
+</tr>
+<tr >
+  <td style="color:#FFFFFF; background-color:#002561; text-align:center">Expired Users</td>
+  {% if hostvars[server]['comparision_output']['expired_users'] | length >0 %}
+  <td style="color:#002561; background-color:#FFFFFF; text-align:center; word-wrap:break-word">{{ hostvars[server]['comparision_output']['expired_users'] | join(',') }}</td>
+  {% else %}
+  <td style="color:#008000; background-color:#FFFFFF; text-align:center">No expired users found</td>
+  {% endif %}
+</tr>
+{% if hostvars[server]['deleted_users'] is defined %}
+<tr>
+  <td style="color:#FFFFFF; background-color:#002561; text-align:center">Expired Users Status</td>
+  {% if hostvars[server]['deleted_users'] | length ==  hostvars[server]['comparision_output']['expired_users'] | length %}
+  <td style="color:#008000; background-color:#FFFFFF; text-align:center">Successfully deleted all expired users</td>
+  {% else %}
+  <td >
+    <table style="border:0; background-color:#FFFFFF; width:100%; table-layout: fixed">
+      <tr>
+        <td style="color:#008000; background-color:#FFFFFF; text-align:center; word-wrap:break-word">Deleted Users: {{ hostvars[server]['deleted_users'] | join(',') }}</td>
+      <tr>
+      {% if hostvars[server]['user_deletion_failed_list'] is defined %}
+      <tr>
+        <td style="color:#FF0000; background-color:#FFFFFF; text-align:center; word-wrap:break-word">Failed to delete users: {{ hostvars[server]['user_deletion_failed_list'] | join(',') }}</td>
+      <tr>
+      {% endif%}
+    </table>
+  </td>
+  {% endif %}
+</tr>
+{% else %}
+  {% if hostvars[server]['user_deletion_failed_list'] is defined %}
+  <tr>
+    <td style="color:#FFFFFF; background-color:#002561; text-align:center">Expired Users Status</td>
+    <td style="color:#FF0000; background-color:#FFFFFF; text-align:center; word-wrap:break-word">Failed to delete users: {{ hostvars[server]['user_deletion_failed_list'] | join(',') }}</td>
+  <tr>
+  {% endif%}
+{% endif %}
+</table>
+<br><B>
+
+<table style="color:#FFFFFF; background-color:#002561; border:0; width:100%; table-layout: fixed" >
+<tr>
+  <td align='center'>User Privileges Mismatch Information</td>
+</tr>
+</table>
+
+{% if hostvars[server]['comparision_output']['privilege_mismatch'].items() | length >0 %}
+<table style=" border:0; width:100%; table-layout: fixed" >
+  <tr style="background-color:#002561; color: #FFFFFF">
+    <td style="width:30%; text-align:center">User</td><td style="width:35%; text-align:center">ENM Privileges</td>
+    <td style="text-align:center">CSV Privileges</td>
+  </tr>
+  {% for key in hostvars[server]['comparision_output']['privilege_mismatch'] %}
+  <tr style="background-color:#FFFFFF"; color: #002561">
+    <td>{{ key }}</td>
+    <td style="word-wrap:break-word">{{ hostvars[server]['comparision_output']['privilege_mismatch'][key]['enm_privileges'] | join(',')}}</td>
+    <td style="word-wrap:break-word">{{ hostvars[server]['comparision_output']['privilege_mismatch'][key]['csv_privileges'] | join(',')}}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<table style="border:0; width:100%; table-layout: fixed" >
+  <tr style="color:#008000; background-color:#FFFFFF; text-align:center">
+    <td>No Privileges mismatch found</td>
+  </tr>
+</table>
+{% endif %}
+{% else %}
+<table style="color:#FFFFFF; background-color:#002561; border:0; width:100%; table-layout: fixed" >
+  <tr>
+    <td align='center'>Audit Job Could not be completed on the tenancy for following reasons. Please Check!!!<br/>
+    - No Ericsson Users Found on Tenancy<br/>
+    - Host Unreachable<br/>
+    - Internal Error<br/>
+    </td>
+  </tr>
+</table>
+{% endif %}
+<br><B><br><B>
+{% endfor %}
+<br><B>
+</body>
+</html>
+

@@ -1,0 +1,37 @@
+---
+# This playbook is used to create a ENM user and send an email with a temporary password to the user.
+
+- hosts: "{{ target_hosts }}"
+  tasks:
+    - name: Get the cookie
+      shell: cat ~/.enm_login
+      register: cookie_text
+    - set_fact:
+        temp_passwd: "{{ lookup('password', '/dev/null length=12 chars=ascii_uppercase,ascii_lowercase,digits') + '@18' }}"
+      no_log: true
+    - set_fact:
+        priv: "[{{ privileges }}]"
+    - name: Raise the request to create a user to ENM FQDN for the given tenancy
+      uri:
+        url: https://{{ http_fqdn }}/oss/idm/usermanagement/users/
+        validate_certs: false
+        return_content: yes
+        method: POST
+        headers:
+          Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: "json"
+        body: {"username":"{{ username }}","name":"{{ firstname }}","surname":"{{ surname }}","password":"{{ temp_passwd }}","passwordResetFlag": "true", "email":"{{ email }}","status":"{{ status }}","privileges": "{{ priv }}" }
+        status_code: 201
+    - name: Send a confirmation email to the concerned user with temporary password
+      uri:
+        url: "{{ sendgrid_url }}"
+        validate_certs: false
+        return_content: yes
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body_format: "json"
+        body: {"personalizations": [{"to": [{"email": "{{ email }}"}]}],"from": {"email": "nmaas.monitoring@ericson.com"},"subject": "Your request to access ENM - {{ tenancy_name }} is Successful","content": [{"type": "text/html", "value": "Dear {{ firstname }}, <br> Your request to access the ENM with userid {{ username }} is granted with a temporary password <strong>{{ temp_passwd }}</strong>. Please change the password on your first login. <br> Link to ENM - https://{{ http_fqdn }}.<br> Thanks and Regards, <br>NMaaS BOT"}]}
+      delegate_to: localhost

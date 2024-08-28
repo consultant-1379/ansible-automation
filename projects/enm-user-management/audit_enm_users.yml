@@ -1,0 +1,157 @@
+---
+- hosts: "{{ target_hosts }}"
+  tasks:
+    - name: Audit user
+      block:
+        - name: Generate directory name variable
+          set_fact:
+            unique_id: "{{ lookup('password', '/dev/null length=10 chars=ascii_uppercase,ascii_lowercase') }}"
+          no_log: true
+
+        - name: create temporary directory
+          file:
+            path: /tmp/{{ unique_id }}_user_audit
+            state: directory
+          register: temp_directory
+          delegate_to: localhost
+
+        - name: Get the cookie
+          shell: cat ~/.enm_login
+          register: cookie_text
+
+        - name: Get all users for the given tenancy
+          uri:
+            url: https://{{ http_fqdn }}/oss/idm/usermanagement/users/
+            validate_certs: false
+            return_content: yes
+            method: GET
+            headers:
+              Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+              Accept: "application/json"
+              Content-Type: "application/json"
+            status_code: 200
+          register: json_response
+
+        - name: extract ericsson users
+          set_fact:
+            ericsson_user_list: "{{ ericsson_user_list | default([]) + [item] }}"
+          when: '"@ericsson.com" in item.email'
+          with_items: "{{ json_response.content }}"
+          no_log: true
+
+        - block:
+          - name: Get all users privileges
+            uri:
+              url: https://{{ http_fqdn }}/oss/idm/usermanagement/users/{{ item }}/privileges
+              validate_certs: false
+              return_content: yes
+              method: GET
+              headers:
+                Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+                Accept: "application/json"
+                Content-Type: "application/json"
+              status_code: 200
+            register: privilege_response
+            with_items: "{{ ericsson_user_list | json_query('[].username') }}"
+            ignore_errors: true
+
+          - set_fact:
+              csv_path: "{{ temp_directory.path }}/user_details_input.csv"
+              json_path: "{{ temp_directory.path }}/user_details.json"
+              all_privileges: "{{ privilege_response | json_query('results[*].json') }}"
+              privileges_json_path: "{{ temp_directory.path }}/user_privileges.json"
+            delegate_to: localhost
+
+          - copy:
+              content: "{{ csv_input }}"
+              dest: "{{ csv_path }}"
+            delegate_to: localhost
+
+          - copy:
+              content: "{{ ericsson_user_list }}"
+              dest: "{{ json_path }}"
+            delegate_to: localhost
+
+          - copy:
+              content: "{{ all_privileges }}"
+              dest: "{{ privileges_json_path }}"
+            delegate_to: localhost
+
+          - name: Run script to audit user details
+            script: "{{ playbook_dir }}/scripts/AuditUserDetails.py '{{ tenancy_name }}' {{ csv_path }} {{ json_path }} {{ privileges_json_path }}"
+            register: audit_script_output
+            delegate_to: localhost
+
+          - set_fact:
+              comparision_output: "{{ audit_script_output.stdout | from_json }}"
+
+          - block:
+              - name: Delete expired users
+                uri:
+                  url: https://{{ http_fqdn }}/oss/idm/usermanagement/users/{{ item }}
+                  validate_certs: false
+                  return_content: yes
+                  method: DELETE
+                  headers:
+                    Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+                    Accept: "application/json"
+                    Content-Type: "application/json"
+                  status_code: 204
+                register: delete_user_response
+                loop: "{{ comparision_output['expired_users'] | default([]) }}"
+            rescue:
+              - debug:
+                  msg: "User Deletion failed."
+
+          - set_fact:
+              deleted_users: "{{ deleted_users | default([]) }} + ['{{ item.item }}']"
+            when: item.status == 204
+            loop: "{{ delete_user_response.results }}"
+            no_log: true
+
+          - set_fact:
+              user_deletion_failed_list: "{{ user_deletion_failed_list | default([]) }} + ['{{ item.item }}']"
+            when: item.status != 204
+            loop: "{{ delete_user_response.results }}"
+            no_log: true
+
+          when:
+            - ericsson_user_list is defined
+            - ericsson_user_list | length > 0
+
+        - name: create temp file for html report
+          set_fact:
+            html_report_path: "{{ temp_directory.path }}/user_audit.html"
+          delegate_to: localhost
+
+        - name: create HTML report
+          template:
+            src: "{{ playbook_dir }}/lib/html_mail_template.j2"
+            dest: "{{ html_report_path }}"
+          delegate_to: localhost
+          run_once: true
+
+        - name: Get the HTML content into a variable
+          set_fact:
+            html_content: "{{ lookup('file',html_report_path) | replace('\n','') | replace('\t','') | replace('\"',\"'\") }}"
+          run_once: true
+
+        - name: Email report to the concerned user
+          uri:
+            url: "{{ sendgrid_url }}"
+            validate_certs: false
+            return_content: yes
+            method: POST
+            headers:
+              Content-Type: "application/json"
+            body_format: "json"
+            body: {"personalizations": [{"to": [{"email": "{{ email }}"}]}],"from": {"email": "nmaas.monitoring@ericson.com"},"subject": "User Audit Results","content": [{"type": "text/html", "value": "{{ html_content }}"}]}
+          run_once: true
+          delegate_to: localhost
+
+      always:
+        - name: Delete temporary directory
+          file:
+            path: "{{ temp_directory }}/"
+            state: absent
+          delegate_to: localhost

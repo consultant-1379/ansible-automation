@@ -1,0 +1,26 @@
+---
+- hosts: all
+  tasks:
+    - name: "Check the consul leader"
+      uri:
+        url: "http://127.0.0.1:8500/v1/status/leader"
+        method: GET
+        return_content: yes
+      register: leaderip
+    - debug: msg={{ tenancy_name }}
+    - name: Print the leader IP
+      debug: msg={{ leaderip.content | replace('8300','8500') }}
+    - name: Check is consul_exporter is already running
+      shell: ps -eaf | grep consul_exporter | grep -v grep
+      register: expoter_status
+      ignore_errors: True
+    - name: Copy consul_exporter
+      copy:
+        src: /var/lib/awx/resource/consul-exporter/consul_exporter
+        dest: /tmp
+        mode: 755
+      when: expoter_status.rc == 1
+    - name: Run the script if not running already
+      shell: cd /tmp/; nohup ./consul_exporter --consul.server={{ leaderip.content | replace('8300','8500') }} --kv.prefix=/ --web.listen-address=0.0.0.0:6323 </dev/null >/dev/null 2>&1 &
+      become: yes
+      when: expoter_status.rc == 1

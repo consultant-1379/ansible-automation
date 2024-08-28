@@ -1,0 +1,19 @@
+---
+# This playbook is used to delete a ENM user with given username. IMPORTANT: ** UNOFFICIAL PLAYBOOK ** DEV ONLY
+
+- hosts: "{{ target_hosts }}"
+  tasks:
+    - name: Get the cookie
+      shell: cat ~/.enm_login
+      register: cookie_text
+    - name: Delete expired users
+      uri:
+        url: https://{{ http_fqdn }}/oss/idm/usermanagement/users/{{ user_to_delete }}
+        validate_certs: false
+        return_content: yes
+        method: DELETE
+        headers:
+          Cookie: iPlanetDirectoryPro=S2~{{ cookie_text.stdout }}
+          Accept: "application/json"
+          Content-Type: "application/json"
+        status_code: 204
